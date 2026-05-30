@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ideas, questions, and open-ended discussion
+    url: https://github.com/FiniteHQ/finite-extract/discussions
+    about: Use Discussions for design questions, "should I use finite-extract for X?", and exploratory ideas without a concrete proposal.
+  - name: Security vulnerability
+    url: https://github.com/FiniteHQ/finite-extract/security/advisories/new
+    about: Do NOT open a public issue for security findings — use private vulnerability reporting (see SECURITY.md).

@@ -1,5 +1,11 @@
 # finite-extract
 
+[![CI](https://github.com/FiniteHQ/finite-extract/actions/workflows/ci.yml/badge.svg)](https://github.com/FiniteHQ/finite-extract/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/FiniteHQ/finite-extract)](https://github.com/FiniteHQ/finite-extract/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Swift](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FFiniteHQ%2Ffinite-extract%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/FiniteHQ/finite-extract)
+[![Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FFiniteHQ%2Ffinite-extract%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/FiniteHQ/finite-extract)
+
 On-device structured entity extraction for Apple platforms, powered by [MLX](https://github.com/ml-explore/mlx-swift). Turn free-form text into structured JSON using small language models — **no cloud, no API keys, no network** at inference time.
 
 ```swift
@@ -26,7 +32,7 @@ Two levels of use:
 1. **Schema + prompt** — define an `ExtractionSchema`, call `extract`. Most tasks need only this.
 2. **Custom pipeline** — for tasks that need a discriminative entity-typing pre-pass, a natural-language/DSL intermediate, or a deterministic assembler, compose an `ExtractionPipeline` from `ExtractionStage`s.
 
-See **[docs/customization-guide.md](docs/customization-guide.md)** for both, with worked examples.
+See **[docs/customization-guide.md](docs/customization-guide.md)** for both, with worked examples. API reference is published at **[finitehq.github.io/finite-extract](https://finitehq.github.io/finite-extract/documentation/finiteextract/)**.
 
 ## Installation
 

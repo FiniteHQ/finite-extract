@@ -4,3 +4,5 @@
 *.xcodeproj
 Package.resolved
 xcuserdata/
+_site/
+_site_test/

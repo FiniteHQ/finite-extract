@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest a capability, model, or API change.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Open-ended ideas go in [Discussions](https://github.com/FiniteHQ/finite-extract/discussions) — use this template when you have a concrete proposal.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What use case isn't well served today? Concrete inputs and the outcome you want help frame the trade-off.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: API shape, new model entry, or behavior change. If you have a sketch of `Sources/...` diffs, paste them.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else you tried or ruled out, and why. This often shortens the discussion a lot.
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Compatibility / scope
+      description: Does this change public API? Affect on-device RSS or latency? Add a dependency? If you don't know, that's fine — flag the parts you're unsure about.

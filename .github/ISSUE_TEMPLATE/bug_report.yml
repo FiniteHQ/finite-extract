@@ -1,0 +1,84 @@
+name: Bug report
+description: Something doesn't work the way it should — incorrect extraction, crash, bad JSON, perf regression.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. The more concrete the example, the faster this gets fixed.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What's wrong
+      description: One or two sentences on the misbehavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: |
+        Minimal Swift snippet (or `fe-cli` invocation) that triggers it. If you can paste the schema + input text that hit the bug, even better.
+      render: swift
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected output
+      description: What the extraction *should* have produced.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual output
+      description: What it actually produced. If the raw model output (`result.rawOutput`) differs from the parsed JSON, include both — the gap is usually where the bug is.
+      render: json
+
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      description: Which model from `ModelRegistry`, or which local model directory.
+      placeholder: e.g. qwen25-3b-instruct-4bit (default), or path passed to FiniteExtract(modelDirectory:)
+    validations:
+      required: true
+
+  - type: input
+    id: package-version
+    attributes:
+      label: finite-extract version
+      description: Git tag, commit SHA, or "main".
+      placeholder: e.g. 0.1.0, main @ a1b2c3d
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: Apple Silicon device + OS version. Simulator is not supported and bug reports from Simulator will be closed.
+      placeholder: e.g. macOS 14.4 on M2 MacBook Air, or iOS 17.4 on iPhone 15 Pro
+    validations:
+      required: true
+
+  - type: input
+    id: swift-version
+    attributes:
+      label: Swift / Xcode version
+      placeholder: e.g. Swift 5.10 / Xcode 15.3
+
+  - type: checkboxes
+    id: pre-flight
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and didn't find a duplicate.
+          required: true
+        - label: I confirmed this isn't an MLX-on-Simulator issue (only Apple Silicon device or macOS build).
+          required: true

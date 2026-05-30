@@ -5,10 +5,10 @@ Thanks for your interest in contributing! Here's how to get started.
 ## Getting Started
 
 1. Fork the repo and clone your fork
-2. Open `ios/` in Xcode or use `swift build` from the `ios/` directory
-3. Run tests: `swift test` from `ios/`
+2. `swift build` from the repo root, or open `Package.swift` in Xcode
+3. Run tests: `swift test` from the repo root
 
-**Note:** `swift build` compiles Swift but does not compile Metal shaders. For full MLX runtime testing, use `xcodebuild` or run from Xcode.
+**Note:** `swift build` compiles Swift but does not compile Metal shaders. For full MLX runtime testing, build for a real device or macOS target via `xcodebuild` or run from Xcode — the iOS Simulator is not supported (see the Metal note in the README).
 
 ## What We're Looking For
 
@@ -21,7 +21,7 @@ Thanks for your interest in contributing! Here's how to get started.
 
 1. Create a feature branch from `main`
 2. Make your changes
-3. Ensure all tests pass (`swift test` from `ios/`)
+3. Ensure all tests pass (`swift test` from the repo root)
 4. Open a PR with a clear description of what and why
 
 Keep PRs focused. One feature or fix per PR.
@@ -36,10 +36,10 @@ Keep PRs focused. One feature or fix per PR.
 
 To add a new model to the registry:
 
-1. Test it against the benchmark suite (`benchmark/` directory) to verify extraction quality
-2. Add a case to `ExtractModel` in `ModelRegistry.swift`
-3. Document the model's accuracy, size, and device requirements
-4. Open a PR with benchmark results
+1. Add a case to `ExtractModel` in `Sources/FiniteExtract/ModelRegistry.swift`
+2. Verify it loads and produces valid extractions on a representative sample of inputs in your own use case
+3. Document the model's quantization, RSS footprint, and device requirements in the PR description
+4. Open a PR with the extraction-quality numbers you measured and the harness you used to measure them
 
 ## Reporting Issues
 

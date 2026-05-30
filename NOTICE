@@ -1,0 +1,15 @@
+finite-extract
+Copyright (c) Finite LLC
+
+This product includes and/or depends on the following third-party software:
+
+- mlx-swift-lm (Apple) — https://github.com/ml-explore/mlx-swift-lm — MIT License.
+  Used for model loading and inference.
+
+- Default models are downloaded at runtime from Hugging Face (e.g. the Qwen 2.5
+  family under `mlx-community`). Those weights are distributed under their own
+  licenses by their respective authors; finite-extract does not redistribute them.
+
+- The optional Core ML entity-typing runner targets GLiNER-family models
+  (https://github.com/urchade/GLiNER, Apache-2.0). Any converted model artifact
+  redistributed with this project retains its upstream license and attribution.

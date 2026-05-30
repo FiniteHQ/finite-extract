@@ -150,6 +150,9 @@ public struct LexiconEntityTyper: EntityTyper {
         return spans
     }
 
+    // swiftlint:disable large_tuple
+    // The (text, start, end) span triple is a lightweight internal return type. If it
+    // gains more fields it should become a named struct, but three is fine here.
     /// Capitalised single-token candidate names. The reference lexicon is keyed on
     /// single-token names (first names, pet names), so unigram extraction is both
     /// correct and avoids greedily fusing adjacent capitals ("Met Sarah"). Multi-token
@@ -163,6 +166,7 @@ public struct LexiconEntityTyper: EntityTyper {
             (text: ns.substring(with: m.range), start: m.range.location, end: m.range.location + m.range.length)
         }
     }
+    // swiftlint:enable large_tuple
 }
 
 /// Two-stage typer mirroring the research pipeline (§17.1): a deterministic lexicon

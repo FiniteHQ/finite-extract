@@ -7,8 +7,13 @@ import MLXLMCommon
 /// for structured JSON extraction tasks. Based on benchmark results,
 /// qwen2.5:3b is the recommended default (best extraction quality).
 public enum ExtractModel: String, Sendable, CaseIterable {
+    // swiftlint:disable identifier_name
+    // Case names mirror the HuggingFace MLX model IDs (the Qwen2.5 family). The digits
+    // and underscores are deliberate and are part of the public API surface — renaming
+    // them to satisfy the linter would be a source-breaking change for consumers.
     case qwen2_5_3b = "mlx-community/Qwen2.5-3B-Instruct-4bit"
     case qwen2_5_1_5b = "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+    // swiftlint:enable identifier_name
 
     /// The recommended model for best extraction quality.
     public static let recommended: ExtractModel = .qwen2_5_3b

@@ -13,7 +13,7 @@ let package = Package(
         .executable(name: "fe-cli", targets: ["fe-cli"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/ml-explore/mlx-swift-lm/", .upToNextMinor(from: "2.29.1")),
+        .package(url: "https://github.com/ml-explore/mlx-swift-lm/", .upToNextMinor(from: "3.31.3")),
     ],
     targets: [
         .target(

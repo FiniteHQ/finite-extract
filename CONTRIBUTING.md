@@ -32,6 +32,23 @@ Keep PRs focused. One feature or fix per PR.
 - No force unwraps in library code (tests are fine)
 - Keep the public API surface small — prefer internal visibility unless there's a clear reason to expose something
 
+### Linting
+
+We run [SwiftLint](https://github.com/realm/SwiftLint); CI fails on any violation (`swiftlint lint --strict`). To check locally before pushing:
+
+```sh
+brew install swiftlint   # once
+swiftlint lint --strict
+```
+
+The configuration in `.swiftlint.yml` deliberately keeps all correctness- and complexity-oriented rules enabled and only relaxes a few purely-stylistic ones.
+
+**Inline `// swiftlint:disable` is an escape hatch of last resort.** If you add one:
+
+- Scope it as tightly as possible (`disable:next` for a single line; a `disable`/`enable` pair around the smallest possible block — never a whole file).
+- Put a comment right next to it explaining *why the rule genuinely does not apply here*. "It was noisy" is not a reason.
+- Expect it to be scrutinized in review. CI lists every suppression in the tree as a warning annotation, and a reviewer will push back on any that look like silencing a real signal rather than a true exception. Prefer fixing the code over disabling the rule.
+
 ## Adding Models
 
 To add a new model to the registry:

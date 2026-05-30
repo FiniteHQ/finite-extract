@@ -1,0 +1,45 @@
+# SwiftLint configuration for finite-extract.
+#
+# Philosophy: keep every correctness- and complexity-oriented rule ON, and only
+# relax the handful of purely-stylistic rules that fight this codebase's established
+# house style. Genuine one-off exceptions are handled with inline
+# `// swiftlint:disable <rule>` directives at the specific site — each carrying a
+# justifying comment — NOT by weakening rules globally in this file.
+#
+# Reviewer note: an inline `swiftlint:disable` is an escape hatch. Treat any new one
+# in a pull request as guilty-until-proven-innocent — it must be justified by an
+# adjacent comment explaining why the rule does not apply there.
+
+disabled_rules:
+  # Pure formatting preference. `var x: T? = nil` is allowed for explicitness
+  # (e.g. CLI option parsing), rather than forcing the implicit `var x: T?`.
+  - implicit_optional_initialization
+
+identifier_name:
+  # This codebase uses short names in tight scopes (loop indices, regex match binders,
+  # short-lived locals in text/number processing). Relax only the minimum-length check;
+  # the rest of the rule (casing, alphanumeric, max length) stays enforced.
+  min_length:
+    warning: 1
+    error: 1
+  excluded:
+    - as_   # escapes the `as` keyword; the trailing underscore is intentional
+
+line_length:
+  # A handful of lines run slightly past the default 120; 140 is the practical ceiling.
+  warning: 140
+  error: 200
+
+file_length:
+  # Exhaustive test suites are legitimately long; keep a guard only against truly
+  # monstrous files. (Production files in this package are all small.)
+  warning: 800
+  error: 1500
+
+trailing_comma:
+  # This codebase uses trailing commas in multi-line literals (smaller diffs); enforce
+  # them for consistency rather than forbidding them (the default).
+  mandatory_comma: true
+
+excluded:
+  - .build

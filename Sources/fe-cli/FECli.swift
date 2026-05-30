@@ -3,6 +3,10 @@ import FiniteExtract
 
 @main
 struct FECli {
+    // CLI entry point: a flat arg-parsing loop plus dispatch. Kept as one linear
+    // function on purpose — breaking it up would scatter the option handling across
+    // helpers without making it any clearer.
+    // swiftlint:disable:next function_body_length cyclomatic_complexity
     static func main() async throws {
         let args = CommandLine.arguments
 

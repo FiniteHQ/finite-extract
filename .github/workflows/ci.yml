@@ -40,3 +40,27 @@ jobs:
 
       - name: Test
         run: swift test
+
+  lint:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install SwiftLint if not present
+        run: command -v swiftlint >/dev/null 2>&1 || brew install swiftlint
+
+      - name: SwiftLint (strict — warnings fail the build)
+        run: swiftlint lint --strict
+
+      - name: Surface inline lint suppressions for review
+        if: always()
+        run: |
+          echo "Inline 'swiftlint:disable' directives in this branch:"
+          if grep -rn "swiftlint:disable" Sources Tests; then
+            grep -rn "swiftlint:disable" Sources Tests | while IFS= read -r line; do
+              echo "::warning::Inline lint suppression — confirm it is justified: ${line}"
+            done
+          else
+            echo "(none)"
+          fi

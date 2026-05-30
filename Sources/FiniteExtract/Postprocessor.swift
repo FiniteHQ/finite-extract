@@ -6,6 +6,9 @@ import Foundation
 /// common issues: markdown fences, trailing commas, escaped quotes, and
 /// template contamination.
 public enum Postprocessor {
+    // swiftlint:disable function_body_length
+    // `extractJSON` below is a deliberately linear ladder of JSON-recovery fallbacks;
+    // splitting it would obscure the order in which the strategies are attempted.
     /// Attempt to extract valid JSON from raw model output.
     ///
     /// Handles: markdown code fences, leading/trailing text, trailing commas,
@@ -85,6 +88,7 @@ public enum Postprocessor {
 
         return nil
     }
+    // swiftlint:enable function_body_length
 
     private static func tryParse(_ s: String) -> (string: String, parsed: [String: Any])? {
         guard let data = s.data(using: .utf8),

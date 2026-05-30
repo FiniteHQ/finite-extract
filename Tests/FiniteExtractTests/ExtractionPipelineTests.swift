@@ -1,6 +1,9 @@
 import XCTest
 @testable import FiniteExtract
 
+// Large end-to-end test suite; the type-body-length limit (meant to keep production
+// types maintainable) is not meaningful for an exhaustive test class.
+// swiftlint:disable:next type_body_length
 final class ExtractionPipelineTests: XCTestCase {
 
     // MARK: - Successful extraction

@@ -25,6 +25,16 @@ jobs:
           swift --version
           xcodebuild -version || true
 
+      - name: Cache SwiftPM .build
+        uses: actions/cache@v4
+        with:
+          path: .build
+          # Package.resolved is gitignored here, so key on Package.swift (the
+          # pinned deps). hashFiles ignores missing files, so listing both is safe.
+          key: ${{ runner.os }}-spm-${{ hashFiles('Package.swift', 'Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
       - name: Build
         run: swift build
 

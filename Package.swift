@@ -13,7 +13,7 @@ let package = Package(
         .executable(name: "fe-cli", targets: ["fe-cli"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/ml-explore/mlx-swift-lm/", .upToNextMinor(from: "2.29.1")),
+        .package(url: "https://github.com/ml-explore/mlx-swift-lm/", .upToNextMinor(from: "2.31.3")),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.0"),
     ],
     targets: [

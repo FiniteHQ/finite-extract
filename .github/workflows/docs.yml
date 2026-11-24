@@ -3,6 +3,14 @@ name: Deploy docs
 on:
   push:
     branches: [main]
+    # Deploy only when the documented target or its build inputs change
+    # (DocC reads Sources/, including Documentation.docc). A manual run
+    # (workflow_dispatch) forces a deploy.
+    paths:
+      - 'Sources/**'
+      - 'Package.swift'
+      - 'Package.resolved'
+      - '.github/workflows/docs.yml'
   workflow_dispatch:
 
 permissions:

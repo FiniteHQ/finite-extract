@@ -13,14 +13,19 @@ public struct GenerateStage: ExtractionStage {
     private let promptBuilder: @Sendable (ExtractionContext) -> String
     private let maxTokens: Int
     private let temperature: Float
+    private let prefillChunkSize: Int
 
     /// Full form: the prompt builder sees the whole context (e.g. to fold in `typedSpans`).
+    ///
+    /// `prefillChunkSize` is the number of prompt tokens processed between cancellation checks;
+    /// see `FiniteExtract.generateText(systemPrompt:userPrompt:maxTokens:temperature:prefillChunkSize:)`.
     public init(
         _ extractor: FiniteExtract,
         systemPrompt: String,
         name: String = "generate",
         maxTokens: Int = 2048,
         temperature: Float = 0.0,
+        prefillChunkSize: Int = FiniteExtract.defaultPrefillChunkSize,
         prompt promptBuilder: @escaping @Sendable (ExtractionContext) -> String
     ) {
         self.extractor = extractor
@@ -28,6 +33,7 @@ public struct GenerateStage: ExtractionStage {
         self.name = name
         self.maxTokens = maxTokens
         self.temperature = temperature
+        self.prefillChunkSize = prefillChunkSize
         self.promptBuilder = promptBuilder
     }
 
@@ -38,11 +44,12 @@ public struct GenerateStage: ExtractionStage {
         name: String = "generate",
         maxTokens: Int = 2048,
         temperature: Float = 0.0,
+        prefillChunkSize: Int = FiniteExtract.defaultPrefillChunkSize,
         userPrompt: @escaping @Sendable (String) -> String
     ) {
         self.init(
             extractor, systemPrompt: systemPrompt, name: name,
-            maxTokens: maxTokens, temperature: temperature
+            maxTokens: maxTokens, temperature: temperature, prefillChunkSize: prefillChunkSize
         ) { context in userPrompt(context.inputText) }
     }
 
@@ -52,7 +59,8 @@ public struct GenerateStage: ExtractionStage {
             systemPrompt: systemPrompt,
             userPrompt: userPrompt,
             maxTokens: maxTokens,
-            temperature: temperature
+            temperature: temperature,
+            prefillChunkSize: prefillChunkSize
         )
         context.intermediate = text
         context.userInfo["modelName"] = extractor.modelName

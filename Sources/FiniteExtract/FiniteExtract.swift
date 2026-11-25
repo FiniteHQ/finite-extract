@@ -15,7 +15,7 @@ import MLXLMCommon
 /// print(result.json)
 /// ```
 public final class FiniteExtract: Sendable {
-    private let container: ModelContainer
+    let container: ModelContainer
 
     /// The model identifier used for extraction (display name or HuggingFace ID).
     public let modelName: String
@@ -89,6 +89,8 @@ public final class FiniteExtract: Sendable {
     ///   - schema: The extraction schema defining prompts and output structure.
     ///   - maxTokens: Maximum tokens to generate. Defaults to 2048.
     ///   - temperature: Sampling temperature. Lower values (0.0-0.1) recommended for extraction. Defaults to 0.0.
+    ///   - prefillChunkSize: Prompt tokens processed between cancellation checks. See
+    ///     ``generateText(systemPrompt:userPrompt:maxTokens:temperature:prefillChunkSize:)``.
     /// - Returns: The extraction result with parsed JSON, raw output, and metadata.
     /// - Note: The default models have a ~32K token context window. If the combined system prompt,
     ///   user prompt, and input text exceed this limit, the model may silently truncate input
@@ -97,7 +99,8 @@ public final class FiniteExtract: Sendable {
         from text: String,
         schema: ExtractionSchema,
         maxTokens: Int = 2048,
-        temperature: Float = 0.0
+        temperature: Float = 0.0,
+        prefillChunkSize: Int = FiniteExtract.defaultPrefillChunkSize
     ) async throws -> ExtractionResult {
         // The single-pass path is the two-stage pipeline: generate, then JSON-repair.
         // Richer pipelines (typing pre-pass + NL intermediate + deterministic assembler)
@@ -105,7 +108,7 @@ public final class FiniteExtract: Sendable {
         let pipeline = ExtractionPipeline([
             GenerateStage(
                 self, systemPrompt: schema.systemPrompt,
-                maxTokens: maxTokens, temperature: temperature,
+                maxTokens: maxTokens, temperature: temperature, prefillChunkSize: prefillChunkSize,
                 userPrompt: { [schema] text in schema.buildUserPrompt(from: text) }
             ),
             JSONRepairStage(postprocess: { [schema] (dict: inout [String: Any], input: String) in
@@ -115,8 +118,20 @@ public final class FiniteExtract: Sendable {
         return try await pipeline.run(on: text)
     }
 
+    /// The default number of prompt tokens the model processes between cancellation checks.
+    ///
+    /// Chosen so that one chunk finishes well inside the gap between an app losing focus and
+    /// entering the background, where iOS stops accepting GPU work. On an M4 Mac with a 0.8B
+    /// model a 32-token chunk takes about 17 to 19 ms; smaller chunks take no less time.
+    public static let defaultPrefillChunkSize = 32
+
     /// Generate raw model text for a system + user prompt. The primitive `GenerateStage`
     /// builds on; exposed so custom stages and pipelines can drive the model directly.
+    ///
+    /// Cancelling the calling task stops the model within one small piece of GPU work: one
+    /// prefill chunk of ``defaultPrefillChunkSize`` prompt tokens, or one generated token.
+    /// The call then makes sure nothing it submitted is still queued and throws
+    /// `CancellationError`.
     ///
     /// - Returns: The raw generated text and the inference time in milliseconds.
     public func generateText(
@@ -125,15 +140,74 @@ public final class FiniteExtract: Sendable {
         maxTokens: Int = 2048,
         temperature: Float = 0.0
     ) async throws -> (text: String, inferenceMs: Int) {
-        try Task.checkCancellation()
+        try await generateText(
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt,
+            maxTokens: maxTokens,
+            temperature: temperature,
+            prefillChunkSize: Self.defaultPrefillChunkSize
+        )
+    }
 
+    /// Generate raw model text, choosing how many prompt tokens are processed between
+    /// cancellation checks.
+    ///
+    /// Smaller chunks stop sooner after a cancel; larger chunks prefill long prompts faster.
+    /// The default suits apps that must stop GPU work before going to the background.
+    ///
+    /// The chunk size can change the generated text: some models (Qwen3.5's linear attention
+    /// layers, for example) round an internal state at the end of every chunk. Any prompt
+    /// longer than one chunk can therefore give different text from 0.1.1, and the chat
+    /// template plus a system prompt alone exceed 32 tokens, so with the default that is
+    /// effectively every call. Pass `512` to get exactly the text 0.1.1 produced for models
+    /// that use mlx-swift-lm's default prompt processing (not Gemma 3 or 3n, which process the
+    /// whole prompt in one step).
+    ///
+    /// - Parameter prefillChunkSize: prompt tokens per chunk; values below 1 are treated as 1.
+    /// - Returns: The raw generated text and the inference time in milliseconds.
+    public func generateText(
+        systemPrompt: String,
+        userPrompt: String,
+        maxTokens: Int = 2048,
+        temperature: Float = 0.0,
+        prefillChunkSize: Int
+    ) async throws -> (text: String, inferenceMs: Int) {
+        try await generateText(
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt,
+            parameters: Self.parameters(maxTokens: maxTokens, temperature: temperature),
+            prefillChunkSize: prefillChunkSize,
+            probe: nil
+        )
+    }
+
+    /// The parameters 0.1.1 passed to mlx-swift-lm; only the token limit and temperature are set.
+    static func parameters(maxTokens: Int, temperature: Float) -> GenerateParameters {
         var params = GenerateParameters()
         params.maxTokens = maxTokens
         params.temperature = temperature
+        return params
+    }
+
+    /// The full form, with a probe that tests use to watch each unit of GPU work.
+    func generateText(
+        systemPrompt: String,
+        userPrompt: String,
+        parameters: GenerateParameters,
+        prefillChunkSize: Int,
+        probe: GenerationProbe?
+    ) async throws -> (text: String, inferenceMs: Int) {
+        let prefillChunkSize = max(1, prefillChunkSize)
+        try Task.checkCancellation()
 
         let start = CFAbsoluteTimeGetCurrent()
-        let session = ChatSession(container, instructions: systemPrompt, generateParameters: params)
-        let rawOutput = try await session.respond(to: userPrompt)
+        let rawOutput = try await CancellableGeneration.respond(
+            container: container,
+            chat: [.system(systemPrompt), .user(userPrompt)],
+            parameters: parameters,
+            prefillChunkSize: prefillChunkSize,
+            probe: probe
+        )
         try Task.checkCancellation()
 
         return (rawOutput, Int((CFAbsoluteTimeGetCurrent() - start) * 1000))
@@ -158,19 +232,22 @@ public final class FiniteExtract: Sendable {
     ///   - type: The Decodable type to decode the JSON into.
     ///   - maxTokens: Maximum tokens to generate. Defaults to 2048.
     ///   - temperature: Sampling temperature. Defaults to 0.0.
+    ///   - prefillChunkSize: Prompt tokens processed between cancellation checks.
     /// - Returns: A typed extraction result containing the decoded value and metadata.
     public func extract<T: Decodable>(
         from text: String,
         schema: ExtractionSchema,
         as type: T.Type,
         maxTokens: Int = 2048,
-        temperature: Float = 0.0
+        temperature: Float = 0.0,
+        prefillChunkSize: Int = FiniteExtract.defaultPrefillChunkSize
     ) async throws -> TypedExtractionResult<T> {
         let result = try await extract(
             from: text,
             schema: schema,
             maxTokens: maxTokens,
-            temperature: temperature
+            temperature: temperature,
+            prefillChunkSize: prefillChunkSize
         )
 
         let data = Data(result.rawJSON.utf8)

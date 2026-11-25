@@ -46,6 +46,24 @@ final class ModelGenerationTests: XCTestCase {
         }
     }
 
+    /// `GenerateStage` passes its chunk size through: at 512 it gives the 0.1.1 text. (This
+    /// tells the sizes apart only on a model where this note's text differs at 32 and 512, as
+    /// it does on the 4-bit Qwen3.5 0.8B.)
+    func testGenerateStageUsesItsChunkSize() async throws {
+        let extractor = try await Self.model()
+        let note = Self.note(paragraphs: 8)
+        let reference = try await Self.chatSessionText(extractor, userPrompt: note, maxTokens: 384)
+        let stage = GenerateStage(
+            extractor, systemPrompt: Self.systemPrompt, maxTokens: 384, prefillChunkSize: 512,
+            userPrompt: { $0 }
+        )
+        var context = ExtractionContext(inputText: note)
+
+        try await stage.run(&context)
+
+        XCTAssertEqual(context.intermediate, reference)
+    }
+
     // MARK: - Cancellation
 
     func testCancelDuringPrefillStopsWithinOneChunk() async throws {

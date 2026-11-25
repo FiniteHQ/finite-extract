@@ -55,19 +55,21 @@ Requires macOS 14+ / iOS 17+ on Apple Silicon. Models download from Hugging Face
 
 ## Cancelling
 
-`extract`, `ExtractionPipeline.run` and `generateText` stop when the task running them is cancelled. From 0.1.2 the model stops within one small piece of GPU work: one chunk of the prompt (`FiniteExtract.defaultPrefillChunkSize`, 32 tokens) or one generated token. The call then waits for that work to finish and throws `CancellationError`, so nothing is left running on the GPU once it returns.
+`extract`, `ExtractionPipeline.run`, `GenerateStage` and `generateText` stop when the task running them is cancelled. From 0.2.0 the model stops within one small piece of GPU work: one chunk of the prompt (`FiniteExtract.defaultPrefillChunkSize`, 32 tokens) or one generated token. The call then makes sure the work it submitted has finished and throws `CancellationError`.
 
-This matters on iOS, where the system refuses GPU work from an app in the background. Cancel the task when the app is about to go inactive, and await it to know the GPU is idle:
+This matters on iOS, where the system refuses GPU work from an app in the background. When the app is about to go inactive, cancel every model call that is in flight and await each one before starting another:
 
 ```swift
 let task = Task { try await extractor.extract(from: note, schema: schema) }
 
 // When the app is about to go inactive:
 task.cancel()
-_ = await task.result   // returns after the model has stopped
+_ = await task.result   // returns once this call's GPU work has finished
 ```
 
-To trade stopping speed for prefill speed, pass `prefillChunkSize:` to `generateText`. On an M4 Mac with a 0.8B 4-bit model and a 2,000-token prompt, 32-token chunks take about 17 ms each and add about 24% to prefill time against 512-token chunks; 64-token chunks take about 28 ms and add about 2%. The chunk size can change the generated text slightly, because some models round an internal state at the end of every chunk. `prefillChunkSize: 512` reproduces 0.1.1's output exactly.
+To trade stopping speed for prefill speed, pass `prefillChunkSize:` to `extract`, `GenerateStage` or `generateText`. On an M4 Mac with a 0.8B Qwen3.5 model and a 2,000-token prompt, 32-token chunks take about 17 to 19 ms each and add about 25% to prefill time against 512-token chunks; 64-token chunks take about 28 to 30 ms and add 2 to 5% (4-bit and 8-bit weights respectively). On short prompts, where generating the answer takes most of the time, the difference is a few percent of the whole call.
+
+**The chunk size can change the generated text.** Some models (Qwen3.5's linear attention layers, for example) round an internal state at the end of every chunk, so any prompt longer than one chunk can give different text from 0.1.1. The chat template plus a system prompt alone exceed 32 tokens, so with the default this applies to effectively every call. `prefillChunkSize: 512` reproduces 0.1.1's output exactly for models that use mlx-swift-lm's default prompt processing (Gemma 3 and 3n process the whole prompt in one step, so for them only a chunk at least as long as the prompt does).
 
 ## Architecture
 

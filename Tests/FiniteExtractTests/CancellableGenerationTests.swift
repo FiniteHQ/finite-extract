@@ -4,7 +4,9 @@ import XCTest
 /// The cancellation rules of the generation loop, driven by scripted steps instead of a model.
 ///
 /// The rule: once the calling task is cancelled, at most the unit of GPU work already being
-/// submitted runs; the loop then waits for submitted work and throws `CancellationError`.
+/// submitted runs, and the loop throws `CancellationError` with nothing left queued. Prefill
+/// chunks finish before the next check, so the loop waits for the GPU only once decoding has
+/// started (waiting commits a command buffer, which an app in the background must not do).
 final class CancellableGenerationTests: XCTestCase {
 
     // MARK: - Uncancelled runs
@@ -78,7 +80,19 @@ final class CancellableGenerationTests: XCTestCase {
             try Self.runSteps(steps, chunkSize: 64) { _ in true }
         }
 
-        XCTAssertEqual(steps.calls, [.wait])
+        XCTAssertEqual(steps.calls, [])
+    }
+
+    func testCancelDuringPrefillDoesNotWait() {
+        // The chunk has finished when the loop sees the cancel, so there is nothing to wait for.
+        let steps = ScriptedSteps(promptTokens: 300, tokens: [1])
+        steps.duringPrefill = { _ in cancelCurrentTask() }
+
+        assertThrowsCancellation {
+            try Self.runSteps(steps, chunkSize: 64) { _ in true }
+        }
+
+        XCTAssertEqual(steps.calls, [.prefill(64)])
     }
 
     func testCancelWhileAChunkRunsSubmitsNoFurtherChunk() {
@@ -92,7 +106,7 @@ final class CancellableGenerationTests: XCTestCase {
             try Self.runSteps(steps, chunkSize: 64) { _ in true }
         }
 
-        XCTAssertEqual(steps.calls, [.prefill(64), .prefill(64), .prefill(64), .wait])
+        XCTAssertEqual(steps.calls, [.prefill(64), .prefill(64), .prefill(64)])
     }
 
     func testCancelAsAChunkIsSubmittedAllowsAtMostThatChunk() {
@@ -105,7 +119,7 @@ final class CancellableGenerationTests: XCTestCase {
 
         XCTAssertLessThanOrEqual(recorder.submissionsAfterCancel, 1)
         XCTAssertEqual(steps.calls.filter { $0 == .prefill(64) }.count, 5)
-        XCTAssertEqual(steps.calls.last, .wait)
+        XCTAssertFalse(steps.calls.contains(.wait))
     }
 
     func testCancelDuringLastPrefillChunkNeverStartsDecoding() {
@@ -118,7 +132,7 @@ final class CancellableGenerationTests: XCTestCase {
             try Self.runSteps(steps, chunkSize: 64) { _ in true }
         }
 
-        XCTAssertEqual(steps.calls, [.prefill(64), .prefill(64), .wait])
+        XCTAssertEqual(steps.calls, [.prefill(64), .prefill(64)])
     }
 
     // MARK: - Cancelling during generation
@@ -162,7 +176,7 @@ final class CancellableGenerationTests: XCTestCase {
 
     // MARK: - Errors
 
-    func testOtherErrorsAlsoWaitForSubmittedWork() {
+    func testErrorWhileDecodingStartsStillWaits() {
         struct Boom: Error {}
         let steps = ScriptedSteps(promptTokens: 100, tokens: [1])
         steps.startDecodingError = Boom()

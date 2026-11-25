@@ -60,8 +60,10 @@ enum CancellableGeneration {
     /// GPU work.
     ///
     /// Once the calling task is cancelled, at most the unit already being submitted runs. The
-    /// run then waits for the GPU to finish everything it was given and throws
-    /// `CancellationError`, so nothing is still queued when this returns.
+    /// run then makes sure nothing it submitted is still queued and throws `CancellationError`.
+    /// Prefill chunks finish before the next check, so a cancel during prefill has nothing to
+    /// wait for and submits nothing more; only once decoding has started (the token iterator
+    /// keeps one step in flight) does the run wait for the GPU.
     ///
     /// The prompt is split the same way as mlx-swift-lm's `LLMModel.prepare`: whole chunks while
     /// more than one chunk is left, then the remainder (1 to `chunkSize` tokens) goes to the
@@ -74,6 +76,7 @@ enum CancellableGeneration {
         probe: GenerationProbe? = nil,
         onToken: (Int) -> Bool
     ) throws {
+        var decodeStarted = false
         do {
             var chunkIndex = 0
             while steps.pendingPromptTokens > chunkSize {
@@ -85,6 +88,7 @@ enum CancellableGeneration {
 
             try Task.checkCancellation()
             probe?.record(.decodeStart(tokens: steps.pendingPromptTokens))
+            decodeStarted = true
             try steps.startDecoding(chunkSize: chunkSize)
 
             var tokenIndex = 0
@@ -97,7 +101,9 @@ enum CancellableGeneration {
                 if !onToken(token) { break }
             }
         } catch {
-            steps.waitForSubmittedWork()
+            if decodeStarted {
+                steps.waitForSubmittedWork()
+            }
             throw error
         }
         // The token iterator always has the next step in flight; don't leave it running.
@@ -111,6 +117,14 @@ enum CancellableGeneration {
 ///
 /// Each method does exactly what mlx-swift-lm 2.31's own prefill and token loop do, so an
 /// uncancelled run gives the same tokens as `ChatSession.respond` for the same chunk split.
+///
+/// Assumptions, both true for the parameters FiniteExtract builds:
+/// - The model uses the default `LLMModel.prepare`. Models that override it (Gemma 3 and 3n in
+///   mlx-swift-lm 2.31 run the whole prompt in one step) are still cancellable here, but 0.1.1's
+///   split for them is "the whole prompt", not 512-token chunks.
+/// - No logit processor (repetition, presence or frequency penalty) and no KV-cache
+///   quantization. The token iterator only sees the last chunk of the prompt, so a penalty
+///   context would miss the rest of it.
 struct MLXGenerationSteps: GenerationSteps {
     private let model: any LanguageModel
     private let cache: [KVCache]
@@ -119,6 +133,10 @@ struct MLXGenerationSteps: GenerationSteps {
     private var iterator: TokenIterator?
 
     init(model: any LanguageModel, input: LMInput, parameters: GenerateParameters) {
+        assert(
+            parameters.processor() == nil && parameters.kvBits == nil,
+            "chunked prefill assumes no logit penalties and no KV-cache quantization"
+        )
         self.model = model
         self.cache = model.newCache(parameters: parameters)
         self.parameters = parameters
@@ -150,7 +168,13 @@ struct MLXGenerationSteps: GenerationSteps {
     }
 
     func waitForSubmittedWork() {
-        Stream().synchronize()
+        // The stream generation used: the task's default stream if the caller set one. The wait
+        // commits a command buffer; if the system refuses it (the app is already in the
+        // background), report nothing rather than let MLX's default handler end the process.
+        let stream = StreamOrDevice.default.stream
+        try? withError {
+            stream.synchronize()
+        }
     }
 }
 

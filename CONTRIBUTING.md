@@ -10,6 +10,16 @@ Thanks for your interest in contributing! Here's how to get started.
 
 **Note:** `swift build` compiles Swift but does not compile Metal shaders. For full MLX runtime testing, build for a real device or macOS target via `xcodebuild` or run from Xcode — the iOS Simulator is not supported (see the Metal note in the README).
 
+The tests that load a real model (`ModelGenerationTests`) are skipped unless you point them at a local MLX model directory, and they run under `xcodebuild` (which passes `TEST_RUNNER_`-prefixed variables to the tests):
+
+```sh
+TEST_RUNNER_FINITE_EXTRACT_TEST_MODEL_DIR=/path/to/mlx-model \
+  xcodebuild test -scheme FiniteExtract-Package -destination 'platform=macOS' \
+  -only-testing:FiniteExtractTests/ModelGenerationTests
+```
+
+Add `TEST_RUNNER_FINITE_EXTRACT_BENCH=1` to also run the prefill chunk-size benchmark (use `-configuration Release ENABLE_TESTABILITY=YES` for realistic timings).
+
 ## What We're Looking For
 
 - **New model support** — Add entries to `ModelRegistry.swift` for models you've tested
